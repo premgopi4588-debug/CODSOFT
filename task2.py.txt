@@ -1,0 +1,107 @@
+# Movie Rating Prediction Project
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Load the dataset
+movies = pd.read_csv("IMDb Movies India.csv", encoding="latin1")
+
+print("Dataset Shape:", movies.shape)
+
+# Select only the columns needed for prediction
+movies = movies[
+    ["Genre", "Director", "Actor 1", "Actor 2", "Actor 3", "Rating"]
+]
+
+# Remove rows where rating is missing
+movies = movies.dropna(subset=["Rating"])
+
+# Separate features and target
+X = movies.drop("Rating", axis=1)
+y = movies["Rating"]
+
+# Columns containing text data
+categorical_columns = [
+    "Genre",
+    "Director",
+    "Actor 1",
+    "Actor 2",
+    "Actor 3"
+]
+
+# Handle missing values and convert text to numerical format
+categorical_pipeline = Pipeline([
+    ("fill_missing", SimpleImputer(strategy="most_frequent")),
+    ("encode", OneHotEncoder(handle_unknown="ignore"))
+])
+
+preprocessor = ColumnTransformer([
+    ("categorical_data", categorical_pipeline, categorical_columns)
+])
+
+# Random Forest generally performs well for this type of problem
+model = Pipeline([
+    ("preprocessing", preprocessor),
+    ("prediction_model", RandomForestRegressor(
+        n_estimators=200,
+        random_state=42
+    ))
+])
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+print("Training the model...")
+model.fit(X_train, y_train)
+
+# Predict ratings for test data
+predictions = model.predict(X_test)
+
+# Check model performance
+mae = mean_absolute_error(y_test, predictions)
+rmse = np.sqrt(mean_squared_error(y_test, predictions))
+r2 = r2_score(y_test, predictions)
+
+print("\nModel Evaluation")
+print("MAE :", round(mae, 2))
+print("RMSE:", round(rmse, 2))
+print("R² Score:", round(r2, 2))
+
+# Compare actual and predicted ratings
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x=y_test, y=predictions)
+plt.xlabel("Actual Rating")
+plt.ylabel("Predicted Rating")
+plt.title("Movie Rating Prediction")
+plt.show()
+
+# Predict rating for a new movie
+new_movie = pd.DataFrame({
+    "Genre": ["Action"],
+    "Director": ["Rajkumar Hirani"],
+    "Actor 1": ["Aamir Khan"],
+    "Actor 2": ["Kareena Kapoor"],
+    "Actor 3": ["Sharman Joshi"]
+})
+
+predicted_rating = model.predict(new_movie)
+
+print(
+    "\nEstimated Rating for the Movie:",
+    round(predicted_rating[0], 2)
+)

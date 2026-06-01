@@ -1,0 +1,115 @@
+# Titanic Survival Prediction Project
+
+# Importing required libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# Loading the dataset
+df = pd.read_csv("Titanic-Dataset.csv")
+
+print("Dataset Preview:")
+print(df.head())
+
+# Removing columns that are not useful for prediction
+df.drop(columns=['PassengerId', 'Name', 'Ticket', 'Cabin'], inplace=True)
+
+# Separating features and target variable
+X = df.drop("Survived", axis=1)
+y = df["Survived"]
+
+# Columns used for preprocessing
+num_cols = ['Age', 'Fare', 'SibSp', 'Parch']
+cat_cols = ['Sex', 'Embarked', 'Pclass']
+
+# Handling missing values and scaling numerical data
+num_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+
+# Handling missing categorical values
+cat_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='most_frequent'))
+])
+
+# Combining preprocessing steps
+preprocessor = ColumnTransformer([
+    ('num', num_pipeline, num_cols),
+    ('cat', cat_pipeline, cat_cols)
+])
+
+# Encoding categorical values
+encoder = LabelEncoder()
+
+for col in cat_cols:
+    X[col] = encoder.fit_transform(X[col].astype(str))
+
+# Splitting data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Applying preprocessing
+X_train = preprocessor.fit_transform(X_train)
+X_test = preprocessor.transform(X_test)
+
+# Models to compare
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000),
+    "Decision Tree": DecisionTreeClassifier(max_depth=5),
+    "Random Forest": RandomForestClassifier(
+        n_estimators=100,
+        random_state=42
+    )
+}
+
+best_accuracy = 0
+best_model = ""
+
+# Training and testing each model
+for name, model in models.items():
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, predictions)
+
+    print(f"\n{name}")
+    print("Accuracy:", round(accuracy, 4))
+
+    print("\nClassification Report:")
+    print(classification_report(y_test, predictions))
+
+    # Confusion Matrix
+    cm = confusion_matrix(y_test, predictions)
+
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt='d')
+    plt.title(f"{name} Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.show()
+
+    # Saving the best model
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        best_model = name
+
+# Final result
+print("\nBest Model:", best_model)
+print("Best Accuracy:", round(best_accuracy * 100, 2), "%")

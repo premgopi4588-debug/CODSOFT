@@ -1,0 +1,167 @@
+# ==========================================
+# CREDIT CARD FRAUD DETECTION - ADVANCED
+# ==========================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    roc_auc_score
+)
+
+from sklearn.ensemble import RandomForestClassifier
+
+from imblearn.over_sampling import SMOTE
+
+import pickle
+
+# ==========================================
+# LOAD DATASET
+# ==========================================
+
+df = pd.read_csv("creditcard.csv")
+
+print("Dataset Shape:", df.shape)
+print(df.head())
+
+# ==========================================
+# CHECK MISSING VALUES
+# ==========================================
+
+print(df.isnull().sum())
+
+# ==========================================
+# FRAUD VS NORMAL TRANSACTIONS
+# ==========================================
+
+sns.countplot(x='Class', data=df)
+plt.title("Fraud vs Genuine Transactions")
+plt.show()
+
+# ==========================================
+# FEATURE SCALING
+# ==========================================
+
+scaler = StandardScaler()
+df['Amount'] = scaler.fit_transform(df[['Amount']])
+
+# ==========================================
+# FEATURES AND TARGET
+# ==========================================
+
+X = df.drop('Class', axis=1)
+y = df['Class']
+
+# ==========================================
+# HANDLE CLASS IMBALANCE USING SMOTE
+# ==========================================
+
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X, y)
+
+print("After SMOTE:")
+print(pd.Series(y_resampled).value_counts())
+
+# ==========================================
+# TRAIN TEST SPLIT
+# ==========================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_resampled,
+    y_resampled,
+    test_size=0.2,
+    random_state=42
+)
+
+# ==========================================
+# RANDOM FOREST MODEL
+# ==========================================
+
+model = RandomForestClassifier(
+    n_estimators=200,
+    max_depth=15,
+    random_state=42
+)
+
+model.fit(X_train, y_train)
+
+# ==========================================
+# PREDICTIONS
+# ==========================================
+
+y_pred = model.predict(X_test)
+
+# ==========================================
+# EVALUATION
+# ==========================================
+
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nAccuracy:", accuracy)
+
+print("\nClassification Report")
+print(classification_report(y_test, y_pred))
+
+print("\nROC AUC Score")
+print(roc_auc_score(y_test, y_pred))
+
+# ==========================================
+# CONFUSION MATRIX
+# ==========================================
+
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(6,5))
+sns.heatmap(cm,
+            annot=True,
+            fmt='d',
+            cmap='Blues')
+
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# ==========================================
+# FEATURE IMPORTANCE
+# ==========================================
+
+importance = model.feature_importances_
+
+features = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': importance
+})
+
+features = features.sort_values(
+    by='Importance',
+    ascending=False
+)
+
+plt.figure(figsize=(10,6))
+sns.barplot(
+    x='Importance',
+    y='Feature',
+    data=features.head(15)
+)
+
+plt.title("Top 15 Important Features")
+plt.show()
+
+# ==========================================
+# SAVE MODEL
+# ==========================================
+
+pickle.dump(
+    model,
+    open("fraud_model.pkl", "wb")
+)
+
+print("Model Saved Successfully")

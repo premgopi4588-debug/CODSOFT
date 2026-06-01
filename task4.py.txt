@@ -1,0 +1,98 @@
+# Iris Flower Classification Project
+
+# Import required libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pickle
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# Load the Iris dataset
+iris = load_iris()
+
+# Create a DataFrame
+iris_df = pd.DataFrame(
+    iris.data,
+    columns=iris.feature_names
+)
+
+# Add species names
+iris_df["species"] = iris.target
+iris_df["species"] = iris_df["species"].map({
+    0: "Setosa",
+    1: "Versicolor",
+    2: "Virginica"
+})
+
+# Display first few records
+print("Dataset Preview:")
+print(iris_df.head())
+
+# Check basic information
+print("\nDataset Shape:", iris_df.shape)
+print("\nMissing Values:")
+print(iris_df.isnull().sum())
+
+# Visualize relationships between features
+sns.pairplot(iris_df, hue="species")
+plt.show()
+
+# Prepare input and output data
+X = iris.data
+y = iris.target
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+# Train Random Forest model
+model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+
+model.fit(X_train, y_train)
+
+# Make predictions
+predictions = model.predict(X_test)
+
+# Calculate accuracy
+accuracy = accuracy_score(y_test, predictions)
+
+print("\nModel Accuracy:", round(accuracy * 100, 2), "%")
+
+# Detailed performance report
+print("\nClassification Report:")
+print(
+    classification_report(
+        y_test,
+        predictions,
+        target_names=iris.target_names
+    )
+)
+
+# Save the trained model
+with open("iris_model.pkl", "wb") as file:
+    pickle.dump(model, file)
+
+print("\nModel saved successfully.")
+
+# Test with a sample flower
+sample_flower = [[5.1, 3.5, 1.4, 0.2]]
+
+result = model.predict(sample_flower)
+
+print(
+    "\nPredicted Species:",
+    iris.target_names[result[0]]
+)
+print(f"\nExpected Sales: {predicted_sales[0]:.2f}")
